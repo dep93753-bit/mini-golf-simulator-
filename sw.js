@@ -1,6 +1,6 @@
 /* QuizSpill service worker: lets the app be installed on a phone and still open with a weak connection.
    Always tries the network first (so updates show up right away) and only falls back to the saved copy. */
-const CACHE = 'classquiz-v1';
+const CACHE = 'quizspill-v2';   // bump to clear old saved copies after a big update
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => {
