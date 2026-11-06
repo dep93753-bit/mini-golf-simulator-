@@ -407,3 +407,41 @@ test('AI quiz: the written-out answer decides which option is correct; untrustwo
   expect(r).toEqual(['Spearfishing', '4']);
   expect(errors).toEqual([]);
 });
+
+test('market: points from right answers buy a pack; the cube is kept, equipped, and saved on the device', async ({ page }) => {
+  const errors = await openApp(page);
+  await createClass(page);
+  await becomeStudentAndJoin(page);
+  await page.click('[data-student-tab="market"]');
+  await expect(page.locator('#mkPoints')).toHaveText('0');
+  await expect(page.locator('#mkOpen')).toBeDisabled();
+  await expect(page.locator('.mk-item.locked')).toHaveCount(18);
+  await page.evaluate(() => { Market.addPoints(2); renderMarket(); });
+  await expect(page.locator('#mkPoints')).toHaveText('2');
+  await page.click('#mkOpen');
+  await expect(page.locator('#modal .pack-reveal h3')).toContainText('Cube');
+  await page.click('#modal [data-x]');
+  await expect(page.locator('#mkPoints')).toHaveText('1');
+  await expect(page.locator('.mk-item:not(.locked)')).toHaveCount(1);
+  await expect(page.locator('.mk-item.on')).toHaveCount(1);                       // first cube is equipped
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('qs_market_local')));
+  expect(saved.p).toBe(1);
+  expect(Object.values(saved.c)).toEqual([1]);
+  expect(errors).toEqual([]);
+});
+
+test('market: the account is only written when the student leaves, once a minute at most, and only if something changed', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.evaluate(() => {
+    window.__saves = 0;
+    Cloud.enabled = true; Cloud.saveMarket = async () => { window.__saves++; return true; };
+    window.__leave = () => { Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); };
+  });
+  for (let i = 0; i < 20; i++) await page.evaluate(() => { Market.addPoints(1); Market.openPack(); });   // lots of changes...
+  expect(await page.evaluate(() => window.__saves)).toBe(0);                                      // ...no writes yet
+  await page.evaluate(() => window.__leave());
+  expect(await page.evaluate(() => window.__saves)).toBe(1);                                      // one write on leaving
+  await page.evaluate(() => { Market.addPoints(1); window.__leave(); window.__leave(); });
+  expect(await page.evaluate(() => window.__saves)).toBe(1);                                      // not again within a minute
+  expect(errors).toEqual([]);
+});

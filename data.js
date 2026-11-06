@@ -15,11 +15,11 @@ window.Cloud = (function () {
   const api = {
     enabled: false, uid: null, user: null, profile: null, ready: Promise.resolve(false), status: 'offline', lastError: '',
     publishClass: noop, fetchClass: noop, deleteClass: noop, joinClass: noop, submitScore: noop, saveQsets: noop, removeStudent: noop, saveDone: noop,
-    isDev: () => false, addPost: noop, deletePost: noop, watchPosts: off, trackVisit: noop, trackPlay: noop, trackAI: noop, devStats: async () => [],
+    isDev: () => false, saveMarket: noop, addPost: noop, deletePost: noop, watchPosts: off, trackVisit: noop, trackPlay: noop, trackAI: noop, devStats: async () => [],
     watchClass: off, watchStudents: off, watchScores: off
   };
   // bump ?v= when app.js changes so browsers fetch the new copy instead of an old cached one
-  const startApp = () => { const s = document.createElement('script'); s.src = 'app.js?v=28'; document.body.appendChild(s); };
+  const startApp = () => { const s = document.createElement('script'); s.src = 'app.js?v=29'; document.body.appendChild(s); };
 
   if (!window.firebase) {                       // Firebase blocked/offline: run the app on this device only
     console.warn('[Cloud] Firebase did not load — running offline.');
@@ -173,6 +173,15 @@ window.Cloud = (function () {
     if (!(await api.ready)) throw new Error('not signed in');
     const ref = await classRef(code).collection('posts').add({ uid: api.uid, sid: p.sid, name: String(p.name || 'Student').slice(0, 30), text: String(p.text).slice(0, 500), time: Clock.now(), at: ts() });
     W(); return ref.id;
+  };
+  /* ---------- market (points + collected cubes) ---------- */
+  // Kept inside the person's own profile record, which the app already reads once at sign-in, so loading it on a
+  // new device costs no extra read. The app only calls this when the student leaves the app (one small write).
+  api.saveMarket = async m => {
+    if (!(await api.ready)) return false;
+    await userRef(api.uid).set({ market: clean(m) }, { merge: true }); W();
+    if (api.profile) api.profile.market = clean(m);
+    return true;
   };
   api.deletePost = async (code, id) => { if (!(await api.ready)) return; await classRef(code).collection('posts').doc(id).delete(); W(); };
   api.watchPosts = (code, cb) => {                   // newest 50 posts; retries a little while a new student's join finishes
