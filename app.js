@@ -997,7 +997,7 @@ function clearMistakes(r, answers) {
 window.addEventListener('message', e => {
   const d = e.data;
   if (!d || typeof d !== 'object' || !gameRun || e.source !== $('#battleFrame').contentWindow) return;
-  if (d.type === 'quizAnswer') { gameRun.answers.push({ qIdx: d.qIdx, correct: !!d.correct }); return; }
+  if (d.type === 'quizAnswer') { gameRun.answers.push({ qIdx: d.qIdx, correct: !!d.correct }); if (d.correct && uiMode === 'student') Market.addPoints(1); return; }
   if (d.type !== 'gameEnd') return;
   gameRun.answers = [];     // this round gets saved in full just below
   if (uiMode !== 'student' || !studentSession) return;
@@ -1055,7 +1055,8 @@ function renderStudentClass() {
     { id: 'assignments', label: 'Assignments', icon: 'bx-task' },
     { id: 'practice', label: 'Practice', icon: 'bxs-book' },
     { id: 'mistakes', label: 'Mistakes', icon: 'bx-revision' },
-    { id: 'scores', label: 'My scores', icon: 'bxs-bar-chart-alt-2' }
+    { id: 'scores', label: 'My scores', icon: 'bxs-bar-chart-alt-2' },
+    { id: 'market', label: 'Market', icon: 'bxs-store' }
   ];
   if (c.settings && c.settings.leaderboard) tabs.splice(4, 0, { id: 'leaderboard', label: 'Leaderboard', icon: 'bxs-trophy' });
   const activeTab = tabs.find(t => t.id === studentTab) ? studentTab : 'home';
@@ -1083,6 +1084,7 @@ function renderStudentClass() {
   else if (activeTab === 'mistakes') renderStudentMistakes(c);
   else if (activeTab === 'scores') renderStudentScores(c, scores);
   else if (activeTab === 'leaderboard') renderStudentLeaderboard(c);
+  else if (activeTab === 'market') renderMarket();
 }
 
 function renderStudentLeaderboard(c) {
@@ -1256,6 +1258,99 @@ function renderStudentPractice(c) {
     </div>
   </div>`).join('');
   wireStudentBodyHandlers();
+}
+
+/* ===================== Market: 1 point per correct answer, packs give a random collectible cube ===================== */
+// Placeholder characters: plain colored cubes. 6 rarities x 3 cubes, Blooket-style odds.
+const RARITIES = [
+  { id: 'common', name: 'Common', odds: 45, color: '#8a94a3' },
+  { id: 'uncommon', name: 'Uncommon', odds: 28, color: '#3fa34d' },
+  { id: 'rare', name: 'Rare', odds: 15, color: '#2f65c8' },
+  { id: 'epic', name: 'Epic', odds: 8, color: '#8e44ad' },
+  { id: 'legendary', name: 'Legendary', odds: 3.5, color: '#e0a100' },
+  { id: 'mythical', name: 'Mythical', odds: 0.5, color: '#e0245e' }
+];
+const CUBES = [
+  ['c1', 'Red Cube', 'common', '#e74c3c'], ['c2', 'Blue Cube', 'common', '#3498db'], ['c3', 'Green Cube', 'common', '#2ecc71'],
+  ['c4', 'Orange Cube', 'uncommon', '#e67e22'], ['c5', 'Purple Cube', 'uncommon', '#9b59b6'], ['c6', 'Teal Cube', 'uncommon', '#1abc9c'],
+  ['c7', 'Pink Cube', 'rare', '#ff6fa8'], ['c8', 'Sky Cube', 'rare', '#5dade2'], ['c9', 'Lime Cube', 'rare', '#a3e635'],
+  ['c10', 'Violet Cube', 'epic', '#7c3aed'], ['c11', 'Magenta Cube', 'epic', '#d946ef'], ['c12', 'Amber Cube', 'epic', '#f59e0b'],
+  ['c13', 'Gold Cube', 'legendary', 'linear-gradient(135deg,#fff2a8,#f5c518 45%,#b8860b)'], ['c14', 'Silver Cube', 'legendary', 'linear-gradient(135deg,#ffffff,#c0c6cf 45%,#7d8590)'], ['c15', 'Obsidian Cube', 'legendary', 'linear-gradient(135deg,#3a2d55,#111 60%)'],
+  ['c16', 'Rainbow Cube', 'mythical', 'linear-gradient(135deg,#ff4d4d,#ffb84d,#fff04d,#4dff88,#4db8ff,#b84dff)'], ['c17', 'Galaxy Cube', 'mythical', 'radial-gradient(circle at 30% 30%,#ff8cf0 0 6%,transparent 7%),radial-gradient(circle at 70% 60%,#fff 0 4%,transparent 5%),linear-gradient(135deg,#1a0b3d,#4b1d8f 60%,#0b0620)'], ['c18', 'Ghost Cube', 'mythical', 'rgba(255,255,255,.55)']
+].map(([id, name, rarity, bg]) => ({ id, name, rarity, bg }));
+const PACK_COST = 1;   // 1 point while testing; meant to be 15
+const rarityOf = id => RARITIES.find(r => r.id === id);
+const cubeHtml = (cube, size, extra = '') => `<span class="cube ${extra}" style="--sz:${size}px;background:${cube.bg};border-color:${rarityOf(cube.rarity).color}"></span>`;
+
+// Everything is saved on this device straight away (so nothing is lost if it crashes), and sent to the account
+// only when the student leaves the app: closes it, switches app or tab, or locks the screen. On the next start,
+// a device save that is newer than the account's (the last upload never happened) is uploaded then.
+const Market = (() => {
+  const KEY = 'qs_market_' + (Cloud.uid || 'local');
+  const blank = () => ({ p: 0, c: {}, e: '', t: 0 });
+  let m, dirty = false, lastUpload = 0;
+  try { m = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { m = null; }
+  const cloud = Cloud.profile && Cloud.profile.market;
+  if (cloud && (!m || (cloud.t || 0) >= (m.t || 0))) m = { ...blank(), ...cloud };
+  else if (m) dirty = !!Cloud.enabled && (m.t || 0) > ((cloud && cloud.t) || 0);   // device is ahead of the account
+  else m = blank();
+  const saveLocal = () => { try { localStorage.setItem(KEY, JSON.stringify(m)); } catch (e) {} };
+  function change(fn) { fn(m); m.t = Clock.now(); dirty = true; saveLocal(); }
+  function upload() {                       // at most one write a minute, and only when something changed
+    if (!dirty || !Cloud.enabled || Date.now() - lastUpload < 60000) return;
+    lastUpload = Date.now(); dirty = false;
+    Promise.resolve(Cloud.saveMarket({ ...m })).catch(() => { dirty = true; });
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') upload(); });
+  addEventListener('pagehide', upload);
+  if (dirty) setTimeout(upload, 3000);     // catch up a save that never reached the account
+  return {
+    get points() { return m.p; }, get equipped() { return m.e; }, owned: id => m.c[id] || 0,
+    addPoints(n) { change(x => { x.p += n; }); },
+    equip(id) { if (m.c[id]) change(x => { x.e = id; }); },
+    openPack() {
+      if (m.p < PACK_COST) return null;
+      let roll = Math.random() * 100, r = RARITIES[0];
+      for (const x of RARITIES) { if (roll < x.odds) { r = x; break; } roll -= x.odds; }
+      const pool = CUBES.filter(c => c.rarity === r.id), cube = pool[Math.floor(Math.random() * pool.length)];
+      change(x => { x.p -= PACK_COST; x.c[cube.id] = (x.c[cube.id] || 0) + 1; if (!x.e) x.e = cube.id; });
+      return cube;
+    },
+    _flush: () => { lastUpload = 0; upload(); }
+  };
+})();
+
+function renderMarket() {
+  const body = document.getElementById('studentTabBody');
+  const eq = CUBES.find(c => c.id === Market.equipped), have = CUBES.filter(c => Market.owned(c.id)).length;
+  body.innerHTML = `
+    <div class="card market-top">
+      <div class="market-me">${eq ? cubeHtml(eq, 64) : `<span class="cube cube-none" style="--sz:64px"></span>`}
+        <div><div class="market-pts"><i class='bx bxs-coin-stack'></i> <b id="mkPoints">${Market.points}</b> points</div>
+        <div class="sub">1 point for every question you get right in a game</div></div></div>
+      <div class="market-pack">
+        <button class="btn" id="mkOpen" ${Market.points < PACK_COST ? 'disabled' : ''}><i class='bx bxs-gift'></i> Open pack · ${PACK_COST} point${PACK_COST === 1 ? '' : 's'}</button>
+        <div class="market-odds">${RARITIES.map(r => `<span><i style="background:${r.color}"></i>${r.name} ${r.odds}%</span>`).join('')}</div>
+      </div>
+    </div>
+    <div class="card"><div class="card-pad">
+      <div class="market-hd"><b>Collection</b> <span class="sub">${have} / ${CUBES.length}</span></div>
+      <div class="market-grid">${CUBES.map(c => {
+        const n = Market.owned(c.id), r = rarityOf(c.rarity);
+        return n ? `<button class="mk-item ${Market.equipped === c.id ? 'on' : ''}" data-equip="${c.id}" title="Equip ${esc(c.name)}">${cubeHtml(c, 46)}<span class="mk-name">${esc(c.name)}</span><span class="mk-rar" style="color:${r.color}">${r.name}${n > 1 ? ' · x' + n : ''}</span>${Market.equipped === c.id ? '<span class="mk-eq">Equipped</span>' : ''}</button>`
+          : `<div class="mk-item locked"><span class="cube cube-none" style="--sz:46px">?</span><span class="mk-name">???</span><span class="mk-rar" style="color:${r.color}">${r.name}</span></div>`;
+      }).join('')}</div>
+    </div></div>`;
+  $('#mkOpen').onclick = () => {
+    const cube = Market.openPack(); if (!cube) return toast('Not enough points yet');
+    const r = rarityOf(cube.rarity), n = Market.owned(cube.id);
+    openModal(`<div class="pack-reveal" style="--rc:${r.color}"><div class="pack-burst"></div>${cubeHtml(cube, 110, 'pop')}
+      <h3>${esc(cube.name)}</h3><p class="mk-rar" style="color:${r.color}">${r.name}${n > 1 ? ' · you have ' + n : ' · new!'}</p></div>
+      <div class="foot"><button class="btn ghost" data-equipnow>Equip</button><button class="btn" data-x>Nice</button></div>`);
+    $('#modal [data-x]').onclick = () => { closeModal(); renderMarket(); };
+    $('#modal [data-equipnow]').onclick = () => { Market.equip(cube.id); closeModal(); renderMarket(); };
+  };
+  body.querySelectorAll('[data-equip]').forEach(b => { b.onclick = () => { Market.equip(b.dataset.equip); renderMarket(); }; });
 }
 
 function renderStudentScores(c, scores) {

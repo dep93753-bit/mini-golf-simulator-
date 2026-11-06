@@ -670,3 +670,28 @@ body:not(.dev-on) .seesaw.rock .ss-plank{animation-name:ss-tip-left}
 .stu-post-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;flex-wrap:wrap}
 .stu-post-row small{color:var(--dark-grey)}
 .student-post .meta .del{margin-left:auto}
+
+/* ===== Market: points, packs, collectible cubes ===== */
+.cube{display:inline-grid;place-items:center;width:var(--sz);height:var(--sz);border-radius:22%;border:3px solid #ccc;box-shadow:inset 0 -6px 0 rgba(0,0,0,.18),inset 0 4px 0 rgba(255,255,255,.25);flex:none;color:#fff;font-weight:700}
+.cube-none{background:#d9dde3;border-color:#c3c9d1;color:#8a94a3;font-size:18px}
+.market-top{display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:space-between;padding:18px}
+.market-me{display:flex;align-items:center;gap:14px}
+.market-pts{font-size:20px;display:flex;align-items:center;gap:6px}.market-pts .bx{color:#e0a100;font-size:24px}
+.market-pack{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.market-pack .btn[disabled]{opacity:.5;cursor:not-allowed}
+.market-odds{display:flex;flex-wrap:wrap;gap:6px 10px;justify-content:flex-end;font-size:12px;color:var(--dark-grey)}
+.market-odds i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.card-pad{padding:18px}
+.market-hd{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
+.market-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.mk-item{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px;border:2px solid var(--grey);border-radius:10px;background:var(--card,#fff);font:inherit;color:inherit;cursor:pointer;position:relative}
+.mk-item.on{border-color:var(--blue);background:var(--light-blue)}
+.mk-item.locked{cursor:default;opacity:.75}
+.mk-name{font-size:13px;font-weight:600;text-align:center}
+.mk-rar{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.mk-eq{position:absolute;top:6px;right:6px;font-size:10px;font-weight:700;color:#fff;background:var(--blue);border-radius:6px;padding:1px 5px}
+.pack-reveal{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0 4px;position:relative}
+.pack-burst{position:absolute;top:0;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,var(--rc) 0,transparent 70%);opacity:.35}
+.pack-reveal h3{margin:10px 0 0}
+.cube.pop{animation:cubePop .55s cubic-bezier(.2,1.6,.4,1) both;position:relative}
+@keyframes cubePop{0%{transform:scale(.2) rotate(-25deg);opacity:0}100%{transform:scale(1) rotate(0);opacity:1}}
