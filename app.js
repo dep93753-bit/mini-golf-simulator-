@@ -1261,7 +1261,7 @@ function renderStudentPractice(c) {
 }
 
 /* ===================== Market: 1 point per correct answer, packs give a random collectible cube ===================== */
-// Placeholder characters: plain colored cubes. 6 rarities x 3 cubes, Blooket-style odds.
+// Placeholder characters: plain colored cubes. 3 each of Common/Uncommon/Rare, 2 Epic, 2 Legendary, 1 Mythical.
 const RARITIES = [
   { id: 'common', name: 'Common', odds: 45, color: '#8a94a3' },
   { id: 'uncommon', name: 'Uncommon', odds: 28, color: '#3fa34d' },
@@ -1274,9 +1274,9 @@ const CUBES = [
   ['c1', 'Red Cube', 'common', '#e74c3c'], ['c2', 'Blue Cube', 'common', '#3498db'], ['c3', 'Green Cube', 'common', '#2ecc71'],
   ['c4', 'Orange Cube', 'uncommon', '#e67e22'], ['c5', 'Purple Cube', 'uncommon', '#9b59b6'], ['c6', 'Teal Cube', 'uncommon', '#1abc9c'],
   ['c7', 'Pink Cube', 'rare', '#ff6fa8'], ['c8', 'Sky Cube', 'rare', '#5dade2'], ['c9', 'Lime Cube', 'rare', '#a3e635'],
-  ['c10', 'Violet Cube', 'epic', '#7c3aed'], ['c11', 'Magenta Cube', 'epic', '#d946ef'], ['c12', 'Amber Cube', 'epic', '#f59e0b'],
-  ['c13', 'Gold Cube', 'legendary', 'linear-gradient(135deg,#fff2a8,#f5c518 45%,#b8860b)'], ['c14', 'Silver Cube', 'legendary', 'linear-gradient(135deg,#ffffff,#c0c6cf 45%,#7d8590)'], ['c15', 'Obsidian Cube', 'legendary', 'linear-gradient(135deg,#3a2d55,#111 60%)'],
-  ['c16', 'Rainbow Cube', 'mythical', 'linear-gradient(135deg,#ff4d4d,#ffb84d,#fff04d,#4dff88,#4db8ff,#b84dff)'], ['c17', 'Galaxy Cube', 'mythical', 'radial-gradient(circle at 30% 30%,#ff8cf0 0 6%,transparent 7%),radial-gradient(circle at 70% 60%,#fff 0 4%,transparent 5%),linear-gradient(135deg,#1a0b3d,#4b1d8f 60%,#0b0620)'], ['c18', 'Ghost Cube', 'mythical', 'rgba(255,255,255,.55)']
+  ['c10', 'Violet Cube', 'epic', '#7c3aed'], ['c11', 'Magenta Cube', 'epic', '#d946ef'],
+  ['c13', 'Gold Cube', 'legendary', 'linear-gradient(135deg,#fff2a8,#f5c518 45%,#b8860b)'], ['c14', 'Silver Cube', 'legendary', 'linear-gradient(135deg,#ffffff,#c0c6cf 45%,#7d8590)'],
+  ['c16', 'Rainbow Cube', 'mythical', 'linear-gradient(135deg,#ff4d4d,#ffb84d,#fff04d,#4dff88,#4db8ff,#b84dff)']
 ].map(([id, name, rarity, bg]) => ({ id, name, rarity, bg }));
 const PACK_COST = 1;   // 1 point while testing; meant to be 15
 const rarityOf = id => RARITIES.find(r => r.id === id);

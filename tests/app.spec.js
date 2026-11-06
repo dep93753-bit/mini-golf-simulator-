@@ -415,7 +415,7 @@ test('market: points from right answers buy a pack; the cube is kept, equipped, 
   await page.click('[data-student-tab="market"]');
   await expect(page.locator('#mkPoints')).toHaveText('0');
   await expect(page.locator('#mkOpen')).toBeDisabled();
-  await expect(page.locator('.mk-item.locked')).toHaveCount(18);
+  await expect(page.locator('.mk-item.locked')).toHaveCount(14);
   await page.evaluate(() => { Market.addPoints(2); renderMarket(); });
   await expect(page.locator('#mkPoints')).toHaveText('2');
   await page.click('#mkOpen');
